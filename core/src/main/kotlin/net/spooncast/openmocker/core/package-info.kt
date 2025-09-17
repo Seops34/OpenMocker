@@ -38,6 +38,6 @@
  * - **Type Safety**: Strong typing with serializable data classes
  *
  * @since 1.0.0
- * @author OpenMocker Team
+ * @author Spoon Android Team
  */
 package net.spooncast.openmocker.core
