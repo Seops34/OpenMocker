@@ -11,6 +11,7 @@ class MockingMetrics {
     private val realRequestCount = AtomicLong(0)
     private val cacheHitCount = AtomicLong(0)
     private val cacheMissCount = AtomicLong(0)
+    private val cachedResponseCount = AtomicLong(0)
     private val totalRequestTime = AtomicLong(0)
 
     /**
@@ -46,6 +47,13 @@ class MockingMetrics {
     }
 
     /**
+     * Record a cached response (real response saved to cache).
+     */
+    fun recordCachedResponse() {
+        cachedResponseCount.incrementAndGet()
+    }
+
+    /**
      * Get total number of mocked requests.
      */
     fun getMockedRequestCount(): Long = mockedRequestCount.get()
@@ -54,6 +62,11 @@ class MockingMetrics {
      * Get total number of real requests.
      */
     fun getRealRequestCount(): Long = realRequestCount.get()
+
+    /**
+     * Get total number of cached responses.
+     */
+    fun getCachedResponseCount(): Long = cachedResponseCount.get()
 
     /**
      * Get total number of requests (mocked + real).
@@ -95,6 +108,7 @@ class MockingMetrics {
         realRequestCount.set(0)
         cacheHitCount.set(0)
         cacheMissCount.set(0)
+        cachedResponseCount.set(0)
         totalRequestTime.set(0)
     }
 
@@ -108,6 +122,7 @@ class MockingMetrics {
             appendLine("  Total Requests: ${getTotalRequestCount()}")
             appendLine("  Mocked Requests: ${getMockedRequestCount()}")
             appendLine("  Real Requests: ${getRealRequestCount()}")
+            appendLine("  Cached Responses: ${getCachedResponseCount()}")
             appendLine("  Mocking Ratio: ${String.format("%.1f%%", getMockingRatio() * 100)}")
             appendLine("  Cache Hit Ratio: ${String.format("%.1f%%", getCacheHitRatio() * 100)}")
             appendLine("  Average Response Time: ${String.format("%.1fms", getAverageRequestTime())}")

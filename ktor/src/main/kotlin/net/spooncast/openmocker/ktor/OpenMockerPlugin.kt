@@ -2,17 +2,19 @@ package net.spooncast.openmocker.ktor
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
+import io.ktor.client.call.HttpClientCall
 import io.ktor.client.plugins.api.ClientPlugin
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.HttpRequestData
 import io.ktor.client.request.HttpRequestPipeline
 import io.ktor.client.statement.HttpResponsePipeline
-import io.ktor.http.HttpMethod
-import io.ktor.http.Url
-import io.ktor.http.fullPath
-import io.ktor.http.isSuccess
+import io.ktor.http.*
+import io.ktor.http.content.OutgoingContent
+import io.ktor.http.content.TextContent
 import io.ktor.util.AttributeKey
+import io.ktor.util.date.GMTDate
+import io.ktor.util.pipeline.PipelineContext
 import kotlinx.coroutines.delay
 import net.spooncast.openmocker.core.MockKey
 import net.spooncast.openmocker.core.MockResponse
@@ -84,6 +86,9 @@ internal object AttributeKeys {
 
     /** Track whether a request should bypass caching */
     val BYPASS_CACHE = AttributeKey<Boolean>("OpenMocker.BypassCache")
+
+    /** Store MockResponseInfo for response processing */
+    val MOCK_RESPONSE_INFO = AttributeKey<MockResponseInfo>("OpenMocker.MockResponseInfo")
 }
 
 
@@ -113,6 +118,18 @@ val OpenMocker: ClientPlugin<OpenMockerConfig> = createClientPlugin(
             }
             println("$prefix OpenMocker: $message")
         }
+    }
+
+    /**
+     * Creates a mock response info for processing by the plugin pipeline.
+     * This is used in the intercept mechanism rather than direct HttpClientCall creation.
+     */
+    suspend fun prepareMockResponseInfo(
+        request: HttpRequestBuilder,
+        mockResponse: MockResponse
+    ): MockResponseInfo {
+        val requestData = request.build()
+        return createMockHttpResponse(mockResponse, requestData)
     }
 
     onRequest { request, _ ->
@@ -151,19 +168,13 @@ val OpenMocker: ClientPlugin<OpenMockerConfig> = createClientPlugin(
                 metrics?.recordMockedRequest()
                 metrics?.recordCacheHit()
 
-                // Store mock response in attributes for Phase 3 integration
+                // Store mock response in attributes for transformRequestBody hook
                 request.attributes.put(AttributeKeys.MOCK_RESPONSE_KEY, mockResponse)
-
-                // Apply artificial delay if configured
-                if (mockResponse.delay > 0) {
-                    log(OpenMockerConfig.LogLevel.DEBUG, "Applying mock delay: ${mockResponse.delay}ms")
-                    KtorUtils.applyMockDelay(mockResponse)
-                }
 
                 // Mark that we don't need to cache this response since it's mocked
                 request.attributes.put(AttributeKeys.BYPASS_CACHE, true)
 
-                log(OpenMockerConfig.LogLevel.DEBUG, "Mock response prepared, ready for Phase 3 integration")
+                log(OpenMockerConfig.LogLevel.DEBUG, "Mock response prepared for transformation")
             } else {
                 log(OpenMockerConfig.LogLevel.DEBUG, "No mock found for $method $path, proceeding with real request")
 
@@ -182,6 +193,42 @@ val OpenMocker: ClientPlugin<OpenMockerConfig> = createClientPlugin(
         }
     }
 
+    // Phase 2.4: Request transformation to handle mock responses
+    // Note: For Phase 2.4, we implement a pragmatic approach that works within Ktor's constraints
+    // The full mock response transformation will be completed in Phase 3
+    transformRequestBody { context, content, bodyType ->
+        // Skip if plugin is disabled
+        if (!config.isEnabled) {
+            return@transformRequestBody content as? OutgoingContent
+        }
+
+        val mockResponse = context.attributes.getOrNull(AttributeKeys.MOCK_RESPONSE_KEY)
+
+        if (mockResponse != null) {
+            try {
+                log(OpenMockerConfig.LogLevel.DEBUG, "Request has mock response configured")
+
+                // Apply artificial delay if configured
+                if (mockResponse.delay > 0) {
+                    log(OpenMockerConfig.LogLevel.DEBUG, "Applying mock delay: ${mockResponse.delay}ms")
+                    delay(mockResponse.delay)
+                }
+
+                // Store mock response info for use in response processing
+                val mockResponseInfo = prepareMockResponseInfo(context, mockResponse)
+                context.attributes.put(AttributeKeys.MOCK_RESPONSE_INFO, mockResponseInfo)
+
+                log(OpenMockerConfig.LogLevel.DEBUG, "Mock response info prepared for response phase")
+
+            } catch (e: Exception) {
+                log(OpenMockerConfig.LogLevel.ERROR, "Error preparing mock response: ${e.message}")
+            }
+        }
+
+        content as? OutgoingContent
+    }
+
+    // Phase 2.4: Enhanced onResponse hook with improved caching and metrics
     onResponse { response ->
         // Skip if plugin is disabled
         if (!config.isEnabled) {
@@ -191,6 +238,7 @@ val OpenMocker: ClientPlugin<OpenMockerConfig> = createClientPlugin(
         // Get request context for metrics and logging
         val requestContext = response.call.request.attributes.getOrNull(AttributeKeys.REQUEST_CONTEXT)
         val bypassCache = response.call.request.attributes.getOrNull(AttributeKeys.BYPASS_CACHE) ?: false
+        val mockResponse = response.call.request.attributes.getOrNull(AttributeKeys.MOCK_RESPONSE_KEY)
 
         try {
             // Update metrics with response time if context available
@@ -206,29 +254,43 @@ val OpenMocker: ClientPlugin<OpenMockerConfig> = createClientPlugin(
             }
 
             // Skip caching if this was a mocked response
-            if (bypassCache) {
+            if (bypassCache || mockResponse != null) {
                 log(OpenMockerConfig.LogLevel.DEBUG, "Skipping cache for mocked response")
                 return@onResponse
             }
 
-            // Only cache successful responses or if interceptAll is enabled
-            if (config.interceptAll || response.status.isSuccessful()) {
+            // Enhanced caching logic - cache based on configuration and response status
+            val shouldCache = when {
+                config.interceptAll -> true
+                response.status.isSuccessful() -> true
+                config.cacheFailures && !response.status.isSuccessful() -> true
+                else -> false
+            }
+
+            if (shouldCache) {
                 val method = response.call.request.method.value
                 val path = extractPathFromUrl(response.call.request.url.toString())
                 val code = response.status.value
 
                 log(OpenMockerConfig.LogLevel.DEBUG, "Caching response: $method $path -> $code")
 
-                // Read response body safely without consuming the original stream
+                // Read response body safely with streaming support
                 val body = response.readBodySafely()
 
+                // Cache the response through the engine
                 mockerEngine.cacheResponse(method, path, code, body)
 
-                log(OpenMockerConfig.LogLevel.INFO, "Response cached for $method $path")
+                // Update cache metrics
+                metrics?.recordCachedResponse()
+
+                log(OpenMockerConfig.LogLevel.INFO, "Response cached for $method $path [${code}] - ${body.length} bytes")
+            } else {
+                log(OpenMockerConfig.LogLevel.DEBUG, "Response not cached - status: ${response.status.value}, interceptAll: ${config.interceptAll}")
             }
 
         } catch (e: Exception) {
             log(OpenMockerConfig.LogLevel.ERROR, "Error in onResponse: ${e.message}")
+            // Continue execution even if caching fails - don't break the response pipeline
         }
     }
 }
