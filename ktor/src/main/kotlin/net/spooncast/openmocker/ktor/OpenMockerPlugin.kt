@@ -14,6 +14,14 @@ import io.ktor.util.AttributeKey
 import kotlinx.coroutines.delay
 import net.spooncast.openmocker.core.MockKey
 import net.spooncast.openmocker.core.MockResponse
+import net.spooncast.openmocker.ktor.BYPASS_CACHE_ATTRIBUTE
+import net.spooncast.openmocker.ktor.MOCK_KEY_ATTRIBUTE
+import net.spooncast.openmocker.ktor.MOCK_RESPONSE_KEY
+import net.spooncast.openmocker.ktor.MockingMetrics
+import net.spooncast.openmocker.ktor.OpenMockerLogger
+import net.spooncast.openmocker.ktor.OpenMockerProfiler
+import net.spooncast.openmocker.ktor.REQUEST_CONTEXT_ATTRIBUTE
+import net.spooncast.openmocker.ktor.RequestContext
 
 /**
  * OpenMocker Ktor client plugin for HTTP request mocking and testing.
