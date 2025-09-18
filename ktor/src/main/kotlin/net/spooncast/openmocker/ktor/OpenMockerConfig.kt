@@ -86,6 +86,14 @@ class OpenMockerConfig {
      */
     var logLevel: LogLevel = LogLevel.INFO
 
+    /**
+     * Whether to cache failed responses (4xx, 5xx status codes) for potential mocking.
+     * When enabled, error responses will also be stored in the cache.
+     * This is useful for testing error scenarios and edge cases.
+     * Defaults to false.
+     */
+    var cacheFailures: Boolean = false
+
     internal fun validate() {
         require(maxCacheSize == -1 || maxCacheSize > 0) {
             "maxCacheSize must be either -1 (unlimited) or a positive number"
