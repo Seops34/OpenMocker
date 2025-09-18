@@ -42,6 +42,29 @@ object KtorUtils {
     }
 
     /**
+     * Internal method to create MockResponseInfo from MockResponse and HttpRequestData.
+     *
+     * @param mockResponse The mock response configuration
+     * @param originalRequest The original HTTP request data
+     * @return MockResponseInfo for Phase 3 integration
+     */
+    private fun createMockHttpResponse(
+        mockResponse: MockResponse,
+        originalRequest: HttpRequestData
+    ): MockResponseInfo {
+        val contentType = detectContentType(mockResponse.body)
+        val statusCode = HttpStatusCode.fromValue(mockResponse.code)
+
+        return MockResponseInfo(
+            statusCode = statusCode,
+            body = mockResponse.body,
+            contentType = contentType,
+            delay = mockResponse.delay,
+            originalRequest = originalRequest
+        )
+    }
+
+    /**
      * Applies the delay specified in a MockResponse.
      *
      * This suspend function introduces an artificial delay before returning,

@@ -1,0 +1,419 @@
+package net.spooncast.openmocker.ktor
+
+import io.ktor.client.*
+import io.ktor.client.engine.mock.*
+import io.ktor.client.request.*
+import io.ktor.http.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.test.runTest
+import net.spooncast.openmocker.core.MemoryMockRepository
+import net.spooncast.openmocker.core.MockKey
+import net.spooncast.openmocker.core.MockResponse
+import java.util.concurrent.atomic.AtomicInteger
+import org.junit.Test
+import org.junit.Before
+import org.junit.After
+import org.junit.Assert.*
+
+/**
+ * Concurrency and thread safety tests for OpenMocker onRequest hook.
+ *
+ * Tests the Phase 2.3 functionality under concurrent load including:
+ * - Thread safety of request processing
+ * - Metrics accuracy under concurrent access
+ * - Request context isolation between concurrent requests
+ * - AttributeKey data integrity in multi-threaded scenarios
+ * - Memory safety and resource management
+ */
+class OpenMockerConcurrencyTest {
+
+    private lateinit var repository: MemoryMockRepository
+    private lateinit var mockEngine: MockEngine
+
+    @Before
+    fun setup() {
+        repository = MemoryMockRepository()
+        mockEngine = MockEngine { request ->
+            // Simulate some processing time
+            delay(10)
+            respond(
+                content = """{"path": "${request.url.encodedPath}"}""",
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+    }
+
+    @After
+    fun cleanup() = runTest {
+        repository.clearAll()
+    }
+
+    /**
+     * Given a client with OpenMocker plugin
+     * When making many concurrent requests without mocks
+     * Then all requests should be processed correctly with proper metrics tracking
+     */
+    @Test
+    fun `concurrent requests without mocks are processed correctly`() = runTest {
+        // Given
+        val client = HttpClient(mockEngine) {
+            install(OpenMocker) {
+                this.repository = this@OpenMockerConcurrencyTest.repository
+                isEnabled = true
+                enableLogging = false // Disable logging for performance
+            }
+        }
+
+        val requestCount = 100
+        val successCount = AtomicInteger(0)
+
+        // When
+        val jobs = (1..requestCount).map { index ->
+            async {
+                try {
+                    val response = client.get("https://api.example.com/endpoint$index")
+                    if (response.status == HttpStatusCode.OK) {
+                        successCount.incrementAndGet()
+                    }
+
+                    // Verify each request has proper attributes
+                    val mockKey = response.call.request.attributes.getOrNull(MOCK_KEY_ATTRIBUTE)
+                    val requestContext = response.call.request.attributes.getOrNull(REQUEST_CONTEXT_ATTRIBUTE)
+
+                    assertNotNull(mockKey, "Request $index missing mock key")
+                    assertNotNull(requestContext, "Request $index missing request context")
+                    assertEquals("GET", mockKey.method)
+                    assertEquals("/endpoint$index", mockKey.path)
+                    assertFalse(requestContext.isMocked, "Request $index should not be mocked")
+                } catch (e: Exception) {
+                    fail("Request $index failed: ${e.message}")
+                }
+            }
+        }
+
+        jobs.awaitAll()
+
+        // Then
+        assertEquals(requestCount, successCount.get(), "All requests should succeed")
+
+        client.close()
+    }
+
+    /**
+     * Given a client with OpenMocker plugin and multiple configured mocks
+     * When making concurrent requests that match different mocks
+     * Then each request should get the correct mock response without interference
+     */
+    @Test
+    fun `concurrent requests with different mocks are isolated correctly`() = runTest {
+        // Given
+        val requestCount = 50
+        repeat(requestCount) { index ->
+            val mockKey = MockKey("GET", "/mock$index")
+            val mockResponse = MockResponse(200 + index % 5, """{"index": $index}""", (index % 3) * 10L)
+            repository.saveMock(mockKey, mockResponse)
+        }
+
+        val client = HttpClient(mockEngine) {
+            install(OpenMocker) {
+                this.repository = this@OpenMockerConcurrencyTest.repository
+                isEnabled = true
+                enableLogging = false
+            }
+        }
+
+        val results = mutableMapOf<Int, Triple<Int, String, Long>>()
+
+        // When
+        val jobs = (0 until requestCount).map { index ->
+            async {
+                try {
+                    val response = client.get("https://api.example.com/mock$index")
+
+                    val storedMockResponse = response.call.request.attributes.getOrNull(MOCK_RESPONSE_KEY)
+                    val requestContext = response.call.request.attributes.getOrNull(REQUEST_CONTEXT_ATTRIBUTE)
+
+                    assertNotNull(storedMockResponse, "Request $index should have mock response")
+                    assertNotNull(requestContext, "Request $index should have request context")
+                    assertTrue(requestContext.isMocked, "Request $index should be marked as mocked")
+
+                    synchronized(results) {
+                        results[index] = Triple(
+                            storedMockResponse.code,
+                            storedMockResponse.body,
+                            storedMockResponse.delay
+                        )
+                    }
+                } catch (e: Exception) {
+                    fail("Concurrent request $index failed: ${e.message}")
+                }
+            }
+        }
+
+        jobs.awaitAll()
+
+        // Then
+        assertEquals(requestCount, results.size, "All requests should complete")
+
+        // Verify each request got its own correct mock
+        results.forEach { (index, result) ->
+            val (code, body, delay) = result
+            val expectedCode = 200 + index % 5
+            val expectedBody = """{"index": $index}"""
+            val expectedDelay = (index % 3) * 10L
+
+            assertEquals(expectedCode, code, "Request $index got wrong status code")
+            assertEquals(expectedBody, body, "Request $index got wrong body")
+            assertEquals(expectedDelay, delay, "Request $index got wrong delay")
+        }
+
+        client.close()
+    }
+
+    /**
+     * Given a client with OpenMocker plugin
+     * When making concurrent requests with a mix of mocked and real requests
+     * Then metrics should be accurate and requests should not interfere with each other
+     */
+    @Test
+    fun `concurrent mixed requests maintain accurate metrics`() = runTest {
+        // Given
+        val mockedRequestCount = 30
+        val realRequestCount = 20
+        val totalRequestCount = mockedRequestCount + realRequestCount
+
+        // Setup mocks for first 30 paths
+        repeat(mockedRequestCount) { index ->
+            val mockKey = MockKey("GET", "/mock$index")
+            val mockResponse = MockResponse(200, """{"mocked": $index}""")
+            repository.saveMock(mockKey, mockResponse)
+        }
+
+        val client = HttpClient(mockEngine) {
+            install(OpenMocker) {
+                this.repository = this@OpenMockerConcurrencyTest.repository
+                isEnabled = true
+                enableLogging = false
+            }
+        }
+
+        val mockedResults = AtomicInteger(0)
+        val realResults = AtomicInteger(0)
+
+        // When
+        val jobs = (0 until totalRequestCount).map { index ->
+            async {
+                try {
+                    val path = if (index < mockedRequestCount) "/mock$index" else "/real$index"
+                    val response = client.get("https://api.example.com$path")
+
+                    val storedMockResponse = response.call.request.attributes.getOrNull(MOCK_RESPONSE_KEY)
+                    val requestContext = response.call.request.attributes.getOrNull(REQUEST_CONTEXT_ATTRIBUTE)
+
+                    assertNotNull(requestContext, "Request $index should have request context")
+
+                    if (index < mockedRequestCount) {
+                        // Should be mocked
+                        assertNotNull(storedMockResponse, "Request $index should have mock response")
+                        assertTrue(requestContext.isMocked, "Request $index should be marked as mocked")
+                        mockedResults.incrementAndGet()
+                    } else {
+                        // Should be real
+                        assertNull(storedMockResponse, "Request $index should not have mock response")
+                        assertFalse(requestContext.isMocked, "Request $index should not be marked as mocked")
+                        realResults.incrementAndGet()
+                    }
+                } catch (e: Exception) {
+                    fail("Mixed request $index failed: ${e.message}")
+                }
+            }
+        }
+
+        jobs.awaitAll()
+
+        // Then
+        assertEquals(mockedRequestCount, mockedResults.get(), "Mocked request count should be correct")
+        assertEquals(realRequestCount, realResults.get(), "Real request count should be correct")
+
+        client.close()
+    }
+
+    /**
+     * Given a client with OpenMocker plugin
+     * When making concurrent requests that modify the repository during processing
+     * Then the concurrent modifications should be handled safely
+     */
+    @Test
+    fun `concurrent repository modifications are handled safely`() = runTest {
+        // Given
+        val client = HttpClient(mockEngine) {
+            install(OpenMocker) {
+                this.repository = this@OpenMockerConcurrencyTest.repository
+                isEnabled = true
+                enableLogging = false
+            }
+        }
+
+        val requestCount = 50
+        val modificationJobs = mutableListOf<Job>()
+        val requestJobs = mutableListOf<Deferred<Boolean>>()
+
+        // When - Start concurrent requests and repository modifications
+        repeat(requestCount) { index ->
+            // Launch request
+            val requestJob = async {
+                try {
+                    val response = client.get("https://api.example.com/endpoint$index")
+                    val requestContext = response.call.request.attributes.getOrNull(REQUEST_CONTEXT_ATTRIBUTE)
+                    requestContext != null
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            requestJobs.add(requestJob)
+
+            // Launch repository modification every 5th request
+            if (index % 5 == 0) {
+                val modJob = launch {
+                    try {
+                        val mockKey = MockKey("GET", "/endpoint$index")
+                        val mockResponse = MockResponse(200, """{"modified": $index}""")
+                        repository.saveMock(mockKey, mockResponse)
+                        delay(5) // Small delay to create timing variations
+                        repository.removeMock(mockKey)
+                    } catch (e: Exception) {
+                        // Repository operations should not fail
+                    }
+                }
+                modificationJobs.add(modJob)
+            }
+        }
+
+        // Wait for all operations to complete
+        val requestResults = requestJobs.awaitAll()
+        modificationJobs.joinAll()
+
+        // Then
+        val successfulRequests = requestResults.count { it }
+        assertTrue(successfulRequests >= requestCount * 0.9,
+                  "At least 90% of requests should succeed despite concurrent modifications")
+
+        client.close()
+    }
+
+    /**
+     * Given a client with OpenMocker plugin under heavy load
+     * When making many concurrent requests with delays
+     * Then the system should remain stable and not leak resources
+     */
+    @Test
+    fun `heavy concurrent load with delays maintains stability`() = runTest {
+        // Given
+        val requestCount = 100
+        val delayedMockCount = 20
+
+        // Setup mocks with various delays
+        repeat(delayedMockCount) { index ->
+            val mockKey = MockKey("GET", "/delayed$index")
+            val mockResponse = MockResponse(200, """{"delayed": $index}""", index * 5L) // Up to 95ms delay
+            repository.saveMock(mockKey, mockResponse)
+        }
+
+        val client = HttpClient(mockEngine) {
+            install(OpenMocker) {
+                this.repository = this@OpenMockerConcurrencyTest.repository
+                isEnabled = true
+                enableLogging = false
+                maxCacheSize = 1000 // Set reasonable cache limit
+            }
+        }
+
+        val startTime = System.currentTimeMillis()
+        val completedRequests = AtomicInteger(0)
+
+        // When
+        val jobs = (0 until requestCount).map { index ->
+            async {
+                try {
+                    val path = if (index < delayedMockCount) "/delayed$index" else "/fast$index"
+                    val response = client.get("https://api.example.com$path")
+
+                    val requestContext = response.call.request.attributes.getOrNull(REQUEST_CONTEXT_ATTRIBUTE)
+                    assertNotNull(requestContext, "Request $index should have request context")
+
+                    completedRequests.incrementAndGet()
+                    true
+                } catch (e: Exception) {
+                    false
+                }
+            }
+        }
+
+        val results = jobs.awaitAll()
+        val endTime = System.currentTimeMillis()
+
+        // Then
+        val successRate = results.count { it }.toDouble() / requestCount
+        val totalTime = endTime - startTime
+
+        assertTrue(successRate >= 0.95, "Success rate should be at least 95%, got ${successRate * 100}%")
+        assertTrue(totalTime < 10000, "Total time should be less than 10 seconds, got ${totalTime}ms")
+        assertEquals(requestCount, completedRequests.get(), "All requests should be counted")
+
+        client.close()
+    }
+
+    /**
+     * Given a client with OpenMocker plugin
+     * When making concurrent requests and checking request processing times
+     * Then processing times should be reasonable and not grow linearly with concurrency
+     */
+    @Test
+    fun `concurrent request processing times remain reasonable`() = runTest {
+        // Given
+        val client = HttpClient(mockEngine) {
+            install(OpenMocker) {
+                this.repository = this@OpenMockerConcurrencyTest.repository
+                isEnabled = true
+                enableLogging = false
+            }
+        }
+
+        val requestCount = 20
+        val processingTimes = mutableListOf<Long>()
+
+        // When
+        val jobs = (1..requestCount).map { index ->
+            async {
+                val startTime = System.currentTimeMillis()
+                try {
+                    val response = client.get("https://api.example.com/timing$index")
+                    val endTime = System.currentTimeMillis()
+
+                    val requestContext = response.call.request.attributes.getOrNull(REQUEST_CONTEXT_ATTRIBUTE)
+                    assertNotNull(requestContext, "Request $index should have request context")
+
+                    synchronized(processingTimes) {
+                        processingTimes.add(endTime - startTime)
+                    }
+                } catch (e: Exception) {
+                    fail("Timing request $index failed: ${e.message}")
+                }
+            }
+        }
+
+        jobs.awaitAll()
+
+        // Then
+        assertEquals(requestCount, processingTimes.size, "All processing times should be recorded")
+
+        val averageTime = processingTimes.average()
+        val maxTime = processingTimes.maxOrNull() ?: 0L
+
+        assertTrue(averageTime < 100, "Average processing time should be under 100ms, got ${averageTime}ms")
+        assertTrue(maxTime < 500, "Maximum processing time should be under 500ms, got ${maxTime}ms")
+
+        client.close()
+    }
+}

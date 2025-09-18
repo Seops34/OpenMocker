@@ -57,6 +57,13 @@ class OpenMockerConfig {
      */
     var autoEnableInDebug: Boolean = false
 
+    /**
+     * Whether to enable detailed logging of OpenMocker operations.
+     * When enabled, logs mock hits/misses, caching operations, and performance metrics.
+     * Defaults to false for production performance.
+     */
+    var enableLogging: Boolean = false
+
     internal fun validate() {
         require(maxCacheSize == -1 || maxCacheSize > 0) {
             "maxCacheSize must be either -1 (unlimited) or a positive number"
