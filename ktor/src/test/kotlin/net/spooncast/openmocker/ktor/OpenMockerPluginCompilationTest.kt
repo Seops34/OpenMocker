@@ -21,12 +21,13 @@ import org.junit.Test
  */
 class OpenMockerPluginCompilationTest {
 
+    // BDD: Given default configuration requirements, When plugin configuration is instantiated, Then use correct default values
     @Test
     fun `plugin configuration can be instantiated with default values`() {
-        // Verify that configuration class can be created with defaults
+        // Arrange & Act
         val config = OpenMockerConfig()
 
-        // Check default values
+        // Assert - Check default values
         assertNotNull(config.repository)
         assertTrue("Plugin should be enabled by default", config.isEnabled)
         assertTrue("Intercept all should be true by default", config.interceptAll)
@@ -34,20 +35,21 @@ class OpenMockerPluginCompilationTest {
         assertFalse("Auto enable in debug should default to false", config.autoEnableInDebug)
     }
 
+    // BDD: Given custom configuration values, When plugin configuration is modified, Then accept and store custom settings
     @Test
     fun `plugin configuration can be customized`() {
-        // Verify that configuration can be customized
+        // Arrange
         val customRepo = MemoryMockRepository()
         val config = OpenMockerConfig()
 
-        // Customize configuration
+        // Act - Customize configuration
         config.repository = customRepo
         config.isEnabled = false
         config.interceptAll = false
         config.maxCacheSize = 100
         config.autoEnableInDebug = true
 
-        // Verify customization worked
+        // Assert - Verify customization worked
         assertSame("Custom repository should be set", customRepo, config.repository)
         assertFalse("Plugin should be disabled", config.isEnabled)
         assertFalse("Intercept all should be false", config.interceptAll)
@@ -55,34 +57,43 @@ class OpenMockerPluginCompilationTest {
         assertTrue("Auto enable in debug should be true", config.autoEnableInDebug)
     }
 
+    // BDD: Given default factory function, When KtorMockerEngine is created, Then instantiate with default repository
     @Test
     fun `mocker engine can be created with default repository`() {
-        // Verify that KtorMockerEngine can be instantiated
+        // Act
         val engine = createKtorMockerEngine()
+
+        // Assert
         assertNotNull(engine)
     }
 
+    // BDD: Given custom repository, When KtorMockerEngine is created, Then use provided repository
     @Test
     fun `mocker engine can be created with custom repository`() {
-        // Verify that KtorMockerEngine can be created with custom repository
+        // Arrange
         val customRepo = MemoryMockRepository()
+
+        // Act
         val engine = KtorMockerEngine(customRepo)
+
+        // Assert
         assertNotNull(engine)
     }
 
+    // BDD: Given configuration validation rules, When validate is called, Then accept valid settings and reject invalid ones
     @Test
     fun `configuration validation works correctly`() {
-        // Verify that configuration validation catches invalid settings
+        // Arrange
         val config = OpenMockerConfig()
 
-        // Valid configurations should pass
+        // Act & Assert - Valid configurations should pass
         config.maxCacheSize = 100
         config.validate() // Should not throw
 
         config.maxCacheSize = -1
         config.validate() // Should not throw (unlimited)
 
-        // Invalid configuration should fail
+        // Act & Assert - Invalid configuration should fail
         var exceptionThrown = false
         try {
             config.maxCacheSize = 0
@@ -94,19 +105,23 @@ class OpenMockerPluginCompilationTest {
         assertTrue("Expected validation to fail for maxCacheSize = 0", exceptionThrown)
     }
 
+    // BDD: Given URL with path components, When adapter functions are called, Then compile and execute correctly
     @Test
     fun `adapter functions compile correctly`() {
-        // Verify that adapter functions can be called without compilation errors
+        // Arrange
         val url = "https://api.example.com/test/path?param=value#fragment"
+
+        // Act
         val extractedPath = extractPathFromUrl(url)
 
-        // Should extract path correctly
+        // Assert
         assertEquals("Expected correct path extraction", "/test/path", extractedPath)
     }
 
+    // BDD: Given various URL formats with edge cases, When extractPathFromUrl is called, Then handle all formats correctly
     @Test
     fun `url path extraction handles edge cases`() {
-        // Test various URL formats to ensure robust path extraction
+        // Arrange
         val testCases = mapOf(
             "https://api.example.com/" to "/",
             "https://api.example.com" to "/",
@@ -118,6 +133,7 @@ class OpenMockerPluginCompilationTest {
             "https://api.example.com/complex/nested/path" to "/complex/nested/path"
         )
 
+        // Act & Assert
         testCases.forEach { (url, expectedPath) ->
             val actualPath = extractPathFromUrl(url)
             assertEquals("For URL '$url'", expectedPath, actualPath)
