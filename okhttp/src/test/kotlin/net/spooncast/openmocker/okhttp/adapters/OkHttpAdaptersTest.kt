@@ -10,6 +10,7 @@ import java.io.IOException
 class OkHttpAdaptersTest {
 
     // OkHttpRequestAdapter tests
+    // BDD: Given HTTP request, When extracting method, Then return correct method
     @Test
     fun `OkHttpRequestAdapter extracts method correctly`() {
         // Arrange
@@ -25,6 +26,7 @@ class OkHttpAdaptersTest {
         assertEquals("GET", adapter.method)
     }
 
+    // BDD: Given HTTP request with URL, When extracting path, Then return path without query parameters
     @Test
     fun `OkHttpRequestAdapter extracts path correctly`() {
         // Arrange
@@ -40,6 +42,7 @@ class OkHttpAdaptersTest {
         assertEquals("/api/users/123", adapter.path)
     }
 
+    // BDD: Given different HTTP methods, When creating adapter, Then handle all methods correctly
     @Test
     fun `OkHttpRequestAdapter handles different HTTP methods`() {
         // Test cases for different HTTP methods
@@ -63,6 +66,7 @@ class OkHttpAdaptersTest {
         }
     }
 
+    // BDD: Given root URL, When extracting path, Then return forward slash
     @Test
     fun `OkHttpRequestAdapter handles root path`() {
         // Arrange
@@ -78,6 +82,7 @@ class OkHttpAdaptersTest {
         assertEquals("/", adapter.path)
     }
 
+    // BDD: Given URL with encoded characters, When extracting path, Then return clean path
     @Test
     fun `OkHttpRequestAdapter handles encoded paths`() {
         // Arrange
@@ -93,6 +98,7 @@ class OkHttpAdaptersTest {
         assertEquals("/search", adapter.path)
     }
 
+    // BDD: Given request adapter, When toString is called, Then return meaningful representation
     @Test
     fun `OkHttpRequestAdapter toString returns meaningful representation`() {
         // Arrange
@@ -111,6 +117,7 @@ class OkHttpAdaptersTest {
         assertTrue(result.contains("https://api.example.com/users/123"))
     }
 
+    // BDD: Given request adapters, When comparing with equals and hashCode, Then follow contract
     @Test
     fun `OkHttpRequestAdapter equals and hashCode work correctly`() {
         // Arrange
@@ -132,6 +139,7 @@ class OkHttpAdaptersTest {
     }
 
     // OkHttpResponseAdapter tests
+    // BDD: Given HTTP response, When extracting status code, Then return correct code
     @Test
     fun `OkHttpResponseAdapter extracts status code correctly`() {
         // Arrange
@@ -144,6 +152,7 @@ class OkHttpAdaptersTest {
         assertEquals(404, adapter.code)
     }
 
+    // BDD: Given HTTP response with body, When extracting body, Then return correct content
     @Test
     fun `OkHttpResponseAdapter extracts body correctly`() {
         // Arrange
@@ -157,6 +166,7 @@ class OkHttpAdaptersTest {
         assertEquals(expectedBody, adapter.body)
     }
 
+    // BDD: Given response with empty body, When extracting body, Then return empty string
     @Test
     fun `OkHttpResponseAdapter handles empty body`() {
         // Arrange
@@ -169,6 +179,7 @@ class OkHttpAdaptersTest {
         assertEquals("", adapter.body)
     }
 
+    // BDD: Given response with null body, When extracting body, Then return empty string
     @Test
     fun `OkHttpResponseAdapter handles null body`() {
         // Arrange
@@ -187,6 +198,7 @@ class OkHttpAdaptersTest {
         assertEquals("", adapter.body)
     }
 
+    // BDD: Given response adapter, When accessing body multiple times, Then return cached value
     @Test
     fun `OkHttpResponseAdapter caches body after first access`() {
         // Arrange
@@ -207,6 +219,7 @@ class OkHttpAdaptersTest {
         assertEquals(secondAccess, thirdAccess) // Same cached value
     }
 
+    // BDD: Given different status codes, When checking isSuccessful, Then return correct result
     @Test
     fun `OkHttpResponseAdapter isSuccessful works correctly`() {
         // Test cases for different status codes
@@ -233,6 +246,7 @@ class OkHttpAdaptersTest {
         }
     }
 
+    // BDD: Given HTTP response with message, When extracting message, Then return correct value
     @Test
     fun `OkHttpResponseAdapter message returns correct message`() {
         // Arrange
@@ -246,6 +260,7 @@ class OkHttpAdaptersTest {
         assertEquals(expectedMessage, adapter.message())
     }
 
+    // BDD: Given response with headers, When requesting header value, Then return correct header
     @Test
     fun `OkHttpResponseAdapter header returns correct header value`() {
         // Arrange
@@ -268,6 +283,7 @@ class OkHttpAdaptersTest {
         assertNull(adapter.header("Non-Existent-Header"))
     }
 
+    // BDD: Given response with headers, When requesting all headers, Then return headers map
     @Test
     fun `OkHttpResponseAdapter headers returns all headers`() {
         // Arrange
@@ -302,6 +318,7 @@ class OkHttpAdaptersTest {
         assertTrue("Custom header should exist (case insensitive)", hasCustomHeader)
     }
 
+    // BDD: Given response adapter, When toString is called, Then return meaningful representation
     @Test
     fun `OkHttpResponseAdapter toString returns meaningful representation`() {
         // Arrange
@@ -317,6 +334,7 @@ class OkHttpAdaptersTest {
         assertTrue(result.contains("true")) // successful
     }
 
+    // BDD: Given response adapters, When comparing with equals and hashCode, Then follow contract
     @Test
     fun `OkHttpResponseAdapter equals and hashCode work correctly`() {
         // Arrange

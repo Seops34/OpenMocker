@@ -46,6 +46,7 @@ class OkHttpMockerInterceptorTest {
     }
 
     // Builder tests
+    // BDD: Given default configuration, When Builder.build is called, Then create interceptor with default repository
     @Test
     fun `Builder creates interceptor with default repository`() {
         // Act
@@ -56,6 +57,7 @@ class OkHttpMockerInterceptorTest {
         assertNotNull(result.getEngine())
     }
 
+    // BDD: Given custom repository, When Builder.build is called, Then create interceptor with custom repository
     @Test
     fun `Builder creates interceptor with custom repository`() {
         // Arrange
@@ -71,6 +73,7 @@ class OkHttpMockerInterceptorTest {
         assertNotNull(result.getEngine())
     }
 
+    // BDD: Given companion object methods, When create methods are called, Then create interceptors correctly
     @Test
     fun `Companion create methods work correctly`() {
         // Act
@@ -85,6 +88,7 @@ class OkHttpMockerInterceptorTest {
     }
 
     // Intercept method tests - No mock scenario
+    // BDD: Given no existing mock, When intercept is called, Then proceed with real request
     @Test
     fun `intercept proceeds with real request when no mock exists`() {
         // Arrange
@@ -108,6 +112,7 @@ class OkHttpMockerInterceptorTest {
         assertEquals(1, mockWebServer.requestCount) // Real request was made
     }
 
+    // BDD: Given real HTTP request, When intercept is called, Then cache response for future mocking
     @Test
     fun `intercept caches real response for future mocking`() = runTest {
         // Arrange
@@ -141,6 +146,7 @@ class OkHttpMockerInterceptorTest {
     }
 
     // Intercept method tests - Mock scenario
+    // BDD: Given existing mock, When intercept is called, Then return mock response instead of real request
     @Test
     fun `intercept returns mock response when mock exists`() = runTest {
         // Arrange
@@ -166,6 +172,7 @@ class OkHttpMockerInterceptorTest {
         assertEquals(0, mockWebServer.requestCount) // No real request was made
     }
 
+    // BDD: Given mock with delay, When intercept is called, Then apply specified delay duration
     @Test
     fun `intercept applies mock delay correctly`() = runTest {
         // Arrange
@@ -193,6 +200,7 @@ class OkHttpMockerInterceptorTest {
         assertEquals(0, mockWebServer.requestCount) // No real request was made
     }
 
+    // BDD: Given various HTTP methods, When intercept is called, Then handle all methods correctly
     @Test
     fun `intercept handles different HTTP methods correctly`() = runTest {
         // Test data for different HTTP methods
@@ -226,6 +234,7 @@ class OkHttpMockerInterceptorTest {
     }
 
     // Management method tests
+    // BDD: When getEngine is called, Then provide access to underlying MockerEngine
     @Test
     fun `getEngine provides access to underlying engine`() {
         // Act
@@ -236,6 +245,7 @@ class OkHttpMockerInterceptorTest {
         assertTrue(engine is OkHttpMockerEngine)
     }
 
+    // BDD: Given existing mocks, When getAllMocks is called, Then return all current mocks
     @Test
     fun `getAllMocks returns current mocks`() = runTest {
         // Arrange
@@ -253,6 +263,7 @@ class OkHttpMockerInterceptorTest {
         assertEquals(mockResponse, allMocks[mockKey])
     }
 
+    // BDD: Given cached responses from real requests, When getAllCachedResponses is called, Then return cached data
     @Test
     fun `getAllCachedResponses returns cached responses`() = runTest {
         // Arrange - Make a real request to cache response
@@ -277,6 +288,7 @@ class OkHttpMockerInterceptorTest {
         assertEquals("cached response", cachedResponses[cachedKey]?.body)
     }
 
+    // BDD: Given mocks and cached responses, When clearAll is called, Then remove all data
     @Test
     fun `clearAll removes all mocks and cached responses`() = runTest {
         // Arrange - Add mock and make real request
@@ -309,6 +321,7 @@ class OkHttpMockerInterceptorTest {
     }
 
     // Integration test
+    // BDD: 통합 테스트 - 캐싱, 모킹, 클리어의 완전한 워크플로우가 정상 동작해야 한다
     @Test
     fun `complete workflow - cache, mock, and clear`() = runTest {
         // Step 1: Make real request (should be cached)
@@ -358,6 +371,7 @@ class OkHttpMockerInterceptorTest {
     }
 
     // Error handling tests
+    // BDD: Given request with query parameters, When intercept is called, Then handle correctly by matching path only
     @Test
     fun `intercept handles request with query parameters correctly`() = runTest {
         // Arrange
@@ -381,6 +395,7 @@ class OkHttpMockerInterceptorTest {
         assertEquals(0, mockWebServer.requestCount) // Mock was used
     }
 
+    // BDD: Given response with empty body, When intercept is called, Then handle gracefully without errors
     @Test
     fun `intercept handles empty response body gracefully`() {
         // Arrange

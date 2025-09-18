@@ -14,6 +14,7 @@ import kotlin.system.measureTimeMillis
 class OkHttpUtilsTest {
 
     // OkHttpUtils.createMockOkHttpResponse tests
+    // BDD: Given mock response data, When createMockOkHttpResponse is called, Then create correct OkHttp response
     @Test
     fun `createMockOkHttpResponse creates correct response`() {
         // Arrange
@@ -35,6 +36,7 @@ class OkHttpUtilsTest {
         assertEquals("""{"success": true}""", result.body?.string())
     }
 
+    // BDD: Given JSON response body, When createMockOkHttpResponse is called, Then detect JSON content type
     @Test
     fun `createMockOkHttpResponse detects JSON content type`() {
         // Arrange
@@ -48,6 +50,7 @@ class OkHttpUtilsTest {
         assertEquals("application/json; charset=utf-8", result.body?.contentType().toString())
     }
 
+    // BDD: Given XML response body, When createMockOkHttpResponse is called, Then detect XML content type
     @Test
     fun `createMockOkHttpResponse detects XML content type`() {
         // Arrange
@@ -61,6 +64,7 @@ class OkHttpUtilsTest {
         assertEquals("application/xml; charset=utf-8", result.body?.contentType().toString())
     }
 
+    // BDD: Given plain text response, When createMockOkHttpResponse is called, Then use text content type
     @Test
     fun `createMockOkHttpResponse uses text content type for plain text`() {
         // Arrange
@@ -74,6 +78,7 @@ class OkHttpUtilsTest {
         assertEquals("text/plain; charset=utf-8", result.body?.contentType().toString())
     }
 
+    // BDD: Given custom media type, When createMockOkHttpResponse is called, Then use provided media type
     @Test
     fun `createMockOkHttpResponse uses custom media type when provided`() {
         // Arrange
@@ -88,6 +93,7 @@ class OkHttpUtilsTest {
         assertEquals(customMediaType, result.body?.contentType())
     }
 
+    // BDD: Given various status codes, When createMockOkHttpResponse is called, Then handle all codes correctly
     @Test
     fun `createMockOkHttpResponse handles different status codes correctly`() {
         val testCases = mapOf(
@@ -120,6 +126,7 @@ class OkHttpUtilsTest {
     }
 
     // OkHttpUtils.applyMockDelay tests
+    // BDD: Given zero delay, When applyMockDelay is called, Then complete immediately
     @Test
     fun `applyMockDelay does not delay when delay is zero`() = runTest {
         // Arrange
@@ -134,6 +141,7 @@ class OkHttpUtilsTest {
         assertTrue("Should not delay for zero delay", elapsedTime < 10)
     }
 
+    // BDD: Given positive delay, When applyMockDelay is called, Then apply correct delay duration
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     @Test
     fun `applyMockDelay applies correct delay`() = runTest {
@@ -153,6 +161,7 @@ class OkHttpUtilsTest {
         assertTrue("Delay function completed successfully", true)
     }
 
+    // BDD: Given negative delay, When applyMockDelay is called, Then complete immediately
     @Test
     fun `applyMockDelay does not delay for negative values`() = runTest {
         // Arrange
@@ -168,6 +177,7 @@ class OkHttpUtilsTest {
     }
 
     // Extension function tests
+    // BDD: Given HTTP request, When toMockKey is called, Then create correct MockKey
     @Test
     fun `Request toMockKey creates correct key`() {
         // Arrange
@@ -184,6 +194,7 @@ class OkHttpUtilsTest {
         assertEquals("/api/users/123", result.path)
     }
 
+    // BDD: Given GET request with query params, When toMockKey is called, Then extract path without query
     @Test
     fun `Request toMockKey handles GET requests`() {
         // Arrange
@@ -200,6 +211,7 @@ class OkHttpUtilsTest {
         assertEquals("/search", result.path)
     }
 
+    // BDD: Given HTTP response and delay, When toMockResponse is called, Then create correct MockResponse
     @Test
     fun `Response toMockResponse creates correct mock response`() {
         // Arrange
@@ -216,6 +228,7 @@ class OkHttpUtilsTest {
         assertEquals(expectedDelay, result.delay)
     }
 
+    // BDD: Given response with empty body, When toMockResponse is called, Then handle gracefully
     @Test
     fun `Response toMockResponse handles empty body`() {
         // Arrange
@@ -230,6 +243,7 @@ class OkHttpUtilsTest {
         assertEquals(0L, result.delay)
     }
 
+    // BDD: Given response with null body, When toMockResponse is called, Then return empty string
     @Test
     fun `Response toMockResponse handles null body gracefully`() {
         // Arrange
@@ -250,6 +264,7 @@ class OkHttpUtilsTest {
         assertEquals(0L, result.delay)
     }
 
+    // BDD: Given HTTP response, When peekBody is called, Then create readable copy of response
     @Test
     fun `Response peekBody creates readable copy`() {
         // Arrange
@@ -265,6 +280,7 @@ class OkHttpUtilsTest {
         assertEquals(originalBody, peekedResponse.body?.string())
     }
 
+    // BDD: Given request and mock parameters, When createMockResponse is called, Then create MockResponse
     @Test
     fun `Request createMockResponse creates correct response`() {
         // Arrange
@@ -285,6 +301,7 @@ class OkHttpUtilsTest {
         assertEquals(75L, result.delay)
     }
 
+    // BDD: Given various status codes, When isSuccessful is called, Then return correct boolean values
     @Test
     fun `MockResponse isSuccessful returns correct values`() {
         val testCases = mapOf(
@@ -309,6 +326,7 @@ class OkHttpUtilsTest {
         }
     }
 
+    // BDD: Given various status codes, When isClientError is called, Then identify 4xx codes correctly
     @Test
     fun `MockResponse isClientError returns correct values`() {
         val testCases = mapOf(
@@ -332,6 +350,7 @@ class OkHttpUtilsTest {
         }
     }
 
+    // BDD: Given various status codes, When isServerError is called, Then identify 5xx codes correctly
     @Test
     fun `MockResponse isServerError returns correct values`() {
         val testCases = mapOf(

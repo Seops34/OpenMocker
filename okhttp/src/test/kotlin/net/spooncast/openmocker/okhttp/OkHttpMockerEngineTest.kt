@@ -35,6 +35,7 @@ class OkHttpMockerEngineTest {
     }
 
     // shouldMock() tests
+    // BDD: Given no mock exists, When shouldMock is called, Then return null
     @Test
     fun `shouldMock returns null when no mock exists`() = runTest {
         // Arrange
@@ -51,6 +52,7 @@ class OkHttpMockerEngineTest {
         verify(mockRepository).getMock(expectedKey)
     }
 
+    // BDD: Given mock exists, When shouldMock is called, Then return mock response
     @Test
     fun `shouldMock returns mock response when mock exists`() = runTest {
         // Arrange
@@ -69,6 +71,7 @@ class OkHttpMockerEngineTest {
         verify(mockRepository).getMock(expectedKey)
     }
 
+    // BDD: Given method and path, When shouldMock is called, Then create correct MockKey
     @Test
     fun `shouldMock creates correct MockKey for request`() = runTest {
         // Arrange
@@ -85,6 +88,7 @@ class OkHttpMockerEngineTest {
     }
 
     // cacheResponse() tests
+    // BDD: Given response parameters, When cacheResponse is called, Then store in repository
     @Test
     fun `cacheResponse stores response in repository`() = runTest {
         // Arrange
@@ -102,6 +106,7 @@ class OkHttpMockerEngineTest {
         verify(mockRepository).cacheRealResponse(expectedKey, expectedResponse)
     }
 
+    // BDD: Given empty response body, When cacheResponse is called, Then handle gracefully
     @Test
     fun `cacheResponse handles empty body`() = runTest {
         // Arrange
@@ -120,6 +125,7 @@ class OkHttpMockerEngineTest {
     }
 
     // mock() tests
+    // BDD: Given valid mock data, When mock is called, Then return true for success
     @Test
     fun `mock returns true when successfully saved`() = runTest {
         // Arrange
@@ -134,6 +140,7 @@ class OkHttpMockerEngineTest {
         verify(mockRepository).saveMock(key, response)
     }
 
+    // BDD: Given repository failure, When mock is called, Then return false for failure
     @Test
     fun `mock returns false when repository throws exception`() = runTest {
         // Arrange
@@ -150,6 +157,7 @@ class OkHttpMockerEngineTest {
     }
 
     // unmock() tests
+    // BDD: Given existing mock, When unmock is called, Then return true for successful removal
     @Test
     fun `unmock returns true when mock was removed`() = runTest {
         // Arrange
@@ -164,6 +172,7 @@ class OkHttpMockerEngineTest {
         verify(mockRepository).removeMock(key)
     }
 
+    // BDD: Given no existing mock, When unmock is called, Then return false for no removal
     @Test
     fun `unmock returns false when no mock existed`() = runTest {
         // Arrange
@@ -179,6 +188,7 @@ class OkHttpMockerEngineTest {
     }
 
     // Utility method tests
+    // BDD: Given method and path parameters, When createMockKey is called, Then create correct MockKey
     @Test
     fun `createMockKey creates correct key from parameters`() {
         // Arrange
@@ -193,6 +203,7 @@ class OkHttpMockerEngineTest {
         assertEquals(expected, result)
     }
 
+    // BDD: When getAllMocks is called, Then delegate to repository
     @Test
     fun `getAllMocks delegates to repository`() = runTest {
         // Arrange
@@ -209,6 +220,7 @@ class OkHttpMockerEngineTest {
         verify(mockRepository).getAllMocks()
     }
 
+    // BDD: When getAllCachedResponses is called, Then delegate to repository
     @Test
     fun `getAllCachedResponses delegates to repository`() = runTest {
         // Arrange
@@ -225,6 +237,7 @@ class OkHttpMockerEngineTest {
         verify(mockRepository).getAllCachedResponses()
     }
 
+    // BDD: When clearAll is called, Then delegate to repository
     @Test
     fun `clearAll delegates to repository`() = runTest {
         // Act
@@ -235,6 +248,7 @@ class OkHttpMockerEngineTest {
     }
 
     // Integration tests with real repository
+    // BDD: 통합 테스트 - 완전한 모킹 워크플로우가 정상 동작해야 한다
     @Test
     fun `integration test - complete mock workflow`() = runTest {
         // Arrange
@@ -279,6 +293,7 @@ class OkHttpMockerEngineTest {
         assertEquals(1, finalCached.size)
     }
 
+    // BDD: 통합 테스트 - clearAll 호출 시 모든 데이터가 제거되어야 한다
     @Test
     fun `integration test - clearAll removes everything`() = runTest {
         // Arrange

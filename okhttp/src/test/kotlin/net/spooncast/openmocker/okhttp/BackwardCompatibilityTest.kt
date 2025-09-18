@@ -13,6 +13,7 @@ import org.junit.Test
  */
 class BackwardCompatibilityTest {
 
+    // BDD: Given Builder pattern usage, When creating interceptor, Then work like legacy OpenMockerInterceptor
     @Test
     fun `new interceptor can be created using Builder pattern like legacy`() {
         // This simulates how the legacy interceptor was created:
@@ -26,6 +27,7 @@ class BackwardCompatibilityTest {
         assertTrue("Should be instance of Interceptor", interceptor is Interceptor)
     }
 
+    // BDD: Given companion create methods, When creating interceptor, Then provide same functionality as legacy
     @Test
     fun `new interceptor can be created using companion create method`() {
         // Act - Create using companion methods
@@ -39,6 +41,7 @@ class BackwardCompatibilityTest {
             defaultInterceptor is Interceptor && customInterceptor is Interceptor)
     }
 
+    // BDD: Given constant access, When checking MOCKER_MESSAGE, Then return same value as legacy
     @Test
     fun `new interceptor has same constant as legacy`() {
         // Act
@@ -48,6 +51,7 @@ class BackwardCompatibilityTest {
         assertEquals("OpenMocker enabled", messageConstant)
     }
 
+    // BDD: Given OkHttpClient configuration, When adding interceptor, Then integrate seamlessly like legacy
     @Test
     fun `new interceptor can be added to OkHttpClient like legacy`() {
         // This simulates typical usage:
@@ -67,6 +71,7 @@ class BackwardCompatibilityTest {
         assertEquals("Interceptor should be our interceptor", interceptor, client.interceptors[0])
     }
 
+    // BDD: Given Builder method chaining, When configuring interceptor, Then support fluent API like legacy
     @Test
     fun `builder method chaining works correctly`() {
         // Act
@@ -79,6 +84,7 @@ class BackwardCompatibilityTest {
         assertTrue("Should implement Interceptor interface", interceptor is Interceptor)
     }
 
+    // BDD: Given interface requirements, When checking implementation, Then implement OkHttp Interceptor correctly
     @Test
     fun `interceptor implements Interceptor interface correctly`() {
         // Arrange
@@ -93,6 +99,7 @@ class BackwardCompatibilityTest {
         assertEquals("intercept method should return Response", Response::class.java, interceptMethod.returnType)
     }
 
+    // BDD: Given multiple creation requests, When creating interceptors, Then create independent instances
     @Test
     fun `multiple interceptors can be created independently`() {
         // Act - Create multiple interceptors as would be done in different parts of application
@@ -111,6 +118,7 @@ class BackwardCompatibilityTest {
         assertNotSame("Interceptors should be different instances", interceptor1, interceptor3)
     }
 
+    // BDD: Given API compatibility requirements, When checking public methods, Then expose same API surface as legacy
     @Test
     fun `API surface compatibility - public methods exist`() {
         // Arrange
@@ -131,6 +139,7 @@ class BackwardCompatibilityTest {
         assertTrue("cacheResponse method should exist on engine", cacheResponseMethods.isNotEmpty())
     }
 
+    // BDD: Given various OkHttp configurations, When integrating interceptor, Then work with all client setups
     @Test
     fun `interceptor works with different OkHttp client configurations`() {
         // Act - Test with various OkHttp client configurations that might exist in legacy code
@@ -173,6 +182,7 @@ class BackwardCompatibilityTest {
         }
     }
 
+    // BDD: Given concurrent usage, When creating multiple interceptors, Then maintain thread safety like legacy
     @Test
     fun `thread safety - multiple interceptors can be used concurrently`() {
         // This test ensures that the new interceptor maintains thread safety like the legacy one
@@ -191,6 +201,7 @@ class BackwardCompatibilityTest {
         assertEquals("All interceptors should be unique instances", 10, uniqueInterceptors.size)
     }
 
+    // BDD: Given resource management, When creating many interceptors, Then avoid memory leaks
     @Test
     fun `memory footprint - interceptor creation does not leak resources`() {
         // Act - Create and discard many interceptors to test for memory leaks
@@ -208,6 +219,7 @@ class BackwardCompatibilityTest {
         assertTrue("Memory test completed without issues", true)
     }
 
+    // BDD: Given API consistency requirements, When checking method signatures, Then match expected patterns
     @Test
     fun `API consistency - method signatures match expected patterns`() {
         val builderClass = OkHttpMockerInterceptor.Builder::class.java
