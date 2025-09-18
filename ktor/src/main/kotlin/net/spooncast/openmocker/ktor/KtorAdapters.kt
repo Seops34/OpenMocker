@@ -140,7 +140,10 @@ fun extractPathFromUrl(fullUrl: String): String {
         uri.path.takeIf { it.isNotEmpty() } ?: "/"
     } catch (e: Exception) {
         // Fallback to simple string processing if URI parsing fails
-        val pathStart = fullUrl.indexOf('/', fullUrl.indexOf("://") + 3)
+        val protocolIndex = fullUrl.indexOf("://")
+        if (protocolIndex == -1) return "/" // No protocol found
+
+        val pathStart = fullUrl.indexOf('/', protocolIndex + 3)
         if (pathStart == -1) return "/"
 
         val queryStart = fullUrl.indexOf('?', pathStart)

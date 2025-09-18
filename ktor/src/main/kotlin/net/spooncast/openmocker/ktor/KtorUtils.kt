@@ -223,7 +223,7 @@ fun HttpStatusCode.isSuccessful(): Boolean {
  * @return The path portion without query parameters or fragment
  */
 fun Url.extractPath(): String {
-    return fullPath.takeIf { it.isNotEmpty() } ?: "/"
+    return encodedPath.takeIf { it.isNotEmpty() } ?: "/"
 }
 
 /**
