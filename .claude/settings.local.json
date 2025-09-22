@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh issue create:*)",
+      "Bash(gh label:*)",
+      "Bash(gh issue edit:*)",
+      "Bash(./gradlew:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh repo edit:*)",
+      "Bash(gh issue view:*)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Read(//Users/seop/Documents/FunctionalSpecification/**)",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh api:*)",
+      "Bash(gh issue close:*)",
+      "Bash(for:*)",
+      "Bash(do)",
+      "Bash(echo:*)",
+      "Bash(gh issue delete:*)",
+      "Bash(done)",
+      "Bash(git add:*)",
+      "Bash(git checkout:*)",
+      "Bash(do echo \"=== Issue #$i ===\")",
+      "Read(//Users/seop/.claude/**)",
+      "Bash(kotlin:*)",
+      "Bash(tree:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh repo set-default:*)",
+      "Bash(git remote get-url:*)",
+      "WebSearch",
+      "WebFetch(domain:ktor.io)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
